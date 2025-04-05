@@ -26,6 +26,15 @@ def print_response(response):
 def interactive_mode(rag_service):
     """Run interactive query mode"""
     print_header()
+    
+    if rag_service.query_processor.index is None:
+        print("No index available. Building index first...")
+        success = rag_service.build_index()
+        if not success:
+            print("\nFailed to create index. Please add PDF documents to the 'pdfs' directory and try again.")
+            return
+        print("Index created successfully!")
+    
     print("Enter your questions (type 'exit' to quit):")
     
     while True:
