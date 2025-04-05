@@ -4,6 +4,7 @@ from app.core.config import DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP, PDF_DIR
 import os
 from datetime import datetime
 import time
+import base64
 
 st.set_page_config(
     page_title="RAG System",
@@ -58,8 +59,18 @@ def get_file_info(file_path):
         "modified": modified
     }
 
+def display_pdf(file_path):
+    """Display a PDF file in Streamlit"""
+    with open(file_path, "rb") as f:
+        base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf"></iframe>'
+    st.markdown(pdf_display, unsafe_allow_html=True)
+
 def main():
     st.title("📚 Retrieval Augmented Generation System")
+    
+    if "selected_pdf" not in st.session_state:
+        st.session_state.selected_pdf = None
     
     tab1, tab2, tab3 = st.tabs(["🔍 Query Documents", "📄 Manage Documents", "⚙️ Settings"])
     
@@ -71,11 +82,14 @@ def main():
         if pdf_files:
             st.write(f"**{len(pdf_files)} documents loaded**")
             for pdf in pdf_files:
-                st.write(f"• {pdf}")
+                col1, col2 = st.columns([4, 1])
+                col1.write(f"• {pdf}")
+                if col2.button("👁️", key=f"view_{pdf}", help="View PDF"):
+                    st.session_state.selected_pdf = pdf
+                    st.rerun()
         else:
             st.write("No documents found.")
     
-
     with st.sidebar.expander("🔍 Index Status", expanded=True):
         rag_service = get_rag_service()
         if hasattr(rag_service, 'query_processor') and rag_service.query_processor.index is not None:
@@ -123,6 +137,16 @@ def main():
                             st.caption(f"From: {source_name}")
                 else:
                     st.error("Failed to get a response. Please make sure your index is built.")
+        
+        if st.session_state.selected_pdf:
+            st.divider()
+            st.subheader(f"📄 Viewing: {st.session_state.selected_pdf} ")
+            if st.button("Close PDF", key="close_pdf_main"):
+                st.session_state.selected_pdf = None
+                st.rerun()
+            
+            pdf_path = os.path.join(PDF_DIR, st.session_state.selected_pdf)
+            display_pdf(pdf_path)
     
     with tab2:
         st.header("Manage Documents")
@@ -174,7 +198,6 @@ def main():
         else:
             st.info("No documents found. Upload some PDF files to get started.")
     
-    # SETTINGS TAB
     with tab3:
         st.header("System Settings")
         
