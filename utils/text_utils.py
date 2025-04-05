@@ -30,7 +30,7 @@ def extract_metadata(text: str) -> Dict[str, Any]:
     """
     metadata = {}
     
-    # TODO: Make this more accurate and stufff...
+    # TODO: Make this more accurate and stufff... with vision
     lines = [line.strip() for line in text.split('\n') if line.strip()]
     if lines:
         metadata['title'] = lines[0]
