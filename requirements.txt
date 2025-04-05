@@ -1,0 +1,6 @@
+llama-index-core>=0.10.0
+llama-index-readers-file>=0.1.4
+llama-index-llms-ollama>=0.1.0
+pymupdf>=1.23.0
+langchain>=0.0.267
+python-dotenv>=1.0.0
