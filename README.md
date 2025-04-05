@@ -24,7 +24,8 @@ The application follows a clean, modular architecture:
 ├── pdfs/                   # Directory for PDF files
 ├── storage/                # Directory for index storage
 ├── .env                    # Environment variables
-├── app.py                  # Main application entry point
+├── app.py                  # Main command-line application
+├── streamlit_app.py        # Streamlit web interface
 └── requirements.txt        # Project dependencies
 ```
 
@@ -56,7 +57,25 @@ The application follows a clean, modular architecture:
 
 ## Usage
 
-### Building the Index
+### Web Interface (Recommended)
+
+The easiest way to use the system is through the Streamlit web interface:
+
+```
+streamlit run streamlit_app.py
+```
+
+This will start a local web server and open a browser window with the interface. The web interface provides:
+
+- A user-friendly way to ask questions about your documents
+- Document management (upload, delete, view)
+- System settings configuration
+- Index rebuilding
+- Visualization of sources
+
+### Command Line Interface
+
+#### Building the Index
 
 To build the index from your PDF files:
 
@@ -77,9 +96,9 @@ This will:
 4. Create a vector index using locally run embeddings via Ollama
 5. Save the index to the `storage` directory
 
-### Querying the System
+#### Querying the System
 
-To query the system interactively:
+To query the system interactively through the command line:
 
 ```
 python app.py
@@ -105,8 +124,9 @@ Available Ollama models can be found by running `ollama list` or by visiting the
 
 The default implementation uses a `SentenceSplitter` with a chunk size of 512 tokens and an overlap of 50 tokens. You can modify these parameters by:
 
-1. Using command line parameters: `--chunk-size=768 --chunk-overlap=100`
-2. Modifying the defaults in `app/core/config.py`
+1. Using the Settings tab in the web interface
+2. Using command line parameters: `--chunk-size=768 --chunk-overlap=100`
+3. Modifying the defaults in `app/core/config.py`
 
 ### Adding Custom Document Types
 
@@ -119,5 +139,6 @@ To add support for more document types:
 ## Adding More Documents
 
 To add more documents:
-1. Place additional PDF files in the `pdfs` directory
-2. Run `python app.py index` to rebuild the index 
+
+1. **Using the web interface**: Navigate to the "Manage Documents" tab and use the file uploader
+2. **Manually**: Place additional PDF files in the `pdfs` directory and rebuild the index 
