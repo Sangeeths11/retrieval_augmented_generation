@@ -2,7 +2,6 @@ import streamlit as st
 from app.core.service import RAGService
 from app.core.config import DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP, PDF_DIR
 import os
-import shutil
 from datetime import datetime
 import time
 
