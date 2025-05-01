@@ -1,6 +1,6 @@
 from typing import Optional, Dict, Any
 
-from app.document_processing import PDFLoader, DocumentChunker
+from app.document_processing import PDFLoader, DocumentChunker, DocumentLayoutAnalyzer
 from app.indexing import IndexManager
 from app.query_engine import QueryProcessor
 from app.core.config import DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP, initialize_settings
@@ -24,6 +24,7 @@ class RAGService:
         self.chunker = DocumentChunker(chunk_size, chunk_overlap)
         self.index_manager = IndexManager()
         self.query_processor = QueryProcessor()
+        self.layout_analyzer = DocumentLayoutAnalyzer()
         
         self._load_existing_index()
     
@@ -81,4 +82,19 @@ class RAGService:
                 if not self.build_index():
                     return None
         
-        return self.query_processor.query(query_text) 
+        return self.query_processor.query(query_text)
+    
+    
+    def analyze_layouts(self) -> None:
+        """
+        Run document layout analysis on all PDFs in the PDF directory.
+
+        Returns:
+            None
+            Folders are created for each layout element type, and images are saved in those folders.
+        """
+        for filename in os.listdir(PDF_DIR):
+            if filename.endswith(".pdf"):
+                pdf_path = os.path.join(PDF_DIR, filename)
+                print(f"[INFO] Running layout analysis on {pdf_path}")
+                self.layout_analyzer.analyze_pdf(pdf_path)
