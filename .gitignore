@@ -178,3 +178,6 @@ storage/
 
 # PDF directory
 pdfs/
+
+#Document processing$
+app/document_processing
