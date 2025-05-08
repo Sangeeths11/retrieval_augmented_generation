@@ -1,4 +1,5 @@
 from typing import Optional, Dict, Any
+from pathlib import Path
 
 from app.document_processing import PDFLoader, DocumentChunker, DocumentLayoutAnalyzer
 from app.indexing import IndexManager
@@ -85,16 +86,38 @@ class RAGService:
         return self.query_processor.query(query_text)
     
     
-    def analyze_layouts(self) -> None:
+    def analyze_layouts(self) -> bool:
         """
-        Run document layout analysis on all PDFs in the PDF directory.
+        Run document layout analysis on all loaded PDF documents.
 
         Returns:
-            None
-            Folders are created for each layout element type, and images are saved in those folders.
+            True if analysis ran successfully on all files, False if any failed.
         """
-        for filename in os.listdir(PDF_DIR):
-            if filename.endswith(".pdf"):
-                pdf_path = os.path.join(PDF_DIR, filename)
+        try:
+            print("[INFO] Loading all PDFS for layout analysis...")
+            documents = self.pdf_loader.load_all_pdfs()
+            if not documents:
+                print("No documents found for layout analysis.")
+                return False
+
+            base_output_dir = self.layout_analyzer.base_output_dir
+
+            for doc in documents:
+                if not doc.metadata or "file_path" not in doc.metadata:
+                    print("[WARN] Skipping document without file_path in metadata.")
+                    continue
+                pdf_path = doc.metadata["file_path"]
+                pdf_name = Path(pdf_path).stem
+                output_path = base_output_dir / pdf_name
+
+                if output_path.exists() and any(output_path.iterdir()):
+                    print(f"[INFO] Skipping already analyzed PDF: {pdf_name}")
+                    continue
+
                 print(f"[INFO] Running layout analysis on {pdf_path}")
                 self.layout_analyzer.analyze_pdf(pdf_path)
+
+            return True
+        except Exception as e:
+            print(f"[ERROR] Layout analysis failed: {e}")
+            return False

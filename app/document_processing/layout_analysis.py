@@ -6,6 +6,8 @@ from typing import Optional
 from pdf2image import convert_from_path
 from huggingface_hub import hf_hub_download
 from doclayout_yolo import YOLOv10
+from app.core.config import STORAGE_DIR
+
 
 
 class DocumentLayoutAnalyzer:
@@ -18,8 +20,8 @@ class DocumentLayoutAnalyzer:
         self,
         model_repo: str = "juliozhao/DocLayout-YOLO-DocStructBench",
         model_filename: str = "doclayout_yolo_docstructbench_imgsz1024.pt",
-        output_dir: str = "layout_outputs",
         conf_threshold: float = 0.25,
+        output_dir: Optional[Path] = None,
         image_size: int = 1024,
     ):
         self.device = (
@@ -27,10 +29,12 @@ class DocumentLayoutAnalyzer:
         )
         model_path = hf_hub_download(repo_id=model_repo, filename=model_filename)
         self.model = YOLOv10(model_path)
-        self.output_dir = Path(output_dir)
         self.conf = conf_threshold
         self.imgsz = image_size
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        self.base_output_dir = Path(STORAGE_DIR) / "layout_outputs"
+        self.base_output_dir.mkdir(parents=True, exist_ok=True)
+
 
         print(f"[INFO] Model loaded on {self.device}")
 
@@ -41,20 +45,28 @@ class DocumentLayoutAnalyzer:
         Args:
             pdf_path: Path to the PDF file.
         """
-        print(f"[INFO] Analyzing PDF: {pdf_path}")
+
+        pdf_path = Path(pdf_path)
+        doc_name = pdf_path.stem
+        doc_output_dir = self.base_output_dir / doc_name
+        doc_output_dir.mkdir(parents=True, exist_ok=True)
+
+
+        print(f"[INFO] Analyzing PDF: {pdf_path.name}")
         pages = convert_from_path(pdf_path)
         for i, page in enumerate(pages):
-            image_path = self.output_dir / f"page_{i}.jpg"
+            image_path = doc_output_dir / f"page_{i}.jpg"
             page.save(image_path)
-            self._analyze_image(str(image_path), i)
+            self._analyze_image(str(image_path), i, doc_output_dir)
 
-    def _analyze_image(self, image_path: str, page_number: int):
+    def _analyze_image(self, image_path: str, page_number: int, doc_output_dir: Path):
         """
         Analyze a single image using the YOLOv10 layout model.
 
         Args:
             image_path: Path to the image file.
             page_number: Page number for output naming.
+            doc_output_dir: Folder to store outputs for this document.
         """
         print(f"[INFO] Processing page {page_number}...")
         results = self.model.predict(
@@ -72,10 +84,11 @@ class DocumentLayoutAnalyzer:
 
             crop = image[xyxy[1]:xyxy[3], xyxy[0]:xyxy[2]]
 
-            label_dir = self.output_dir / label
+            label_dir = doc_output_dir / label
             label_dir.mkdir(parents=True, exist_ok=True)
 
             out_path = label_dir / f"page{page_number}_det{i}.jpg"
             cv2.imwrite(str(out_path), crop)
 
         print(f"[INFO] Page {page_number} layout elements saved.")
+

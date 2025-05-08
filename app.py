@@ -95,6 +95,9 @@ def main():
     
     rag_service = RAGService(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     
+    print("Running document layout analysis...")
+    rag_service.analyze_layouts()
+
     if len(sys.argv) > 1 and sys.argv[1] == "index":
         print(f"Building index with chunk_size={chunk_size}, chunk_overlap={chunk_overlap}...")
         success = rag_service.build_index()
