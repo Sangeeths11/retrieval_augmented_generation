@@ -1,10 +1,33 @@
+import os
+import sys
+
+# Fix for PyTorch and Streamlit compatibility issues
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+# Critical fix: disable Streamlit's file watcher for torch modules
+os.environ["STREAMLIT_WATCHDOG_IGNORE_TORCH"] = "True"
+
+# Import streamlit after setting environment variables
 import streamlit as st
+
+# Import everything else after streamlit
 from app.core.service import RAGService
 from app.core.config import DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP, PDF_DIR
-import os
 from datetime import datetime
 import time
 import base64
+from pathlib import Path
+
+# Monkey patch Streamlit's file watcher to ignore torch modules
+import streamlit.watcher.local_sources_watcher
+original_get_module_paths = streamlit.watcher.local_sources_watcher.get_module_paths
+
+def patched_get_module_paths(module):
+    if module.__name__.startswith('torch'):
+        return []
+    return original_get_module_paths(module)
+
+streamlit.watcher.local_sources_watcher.get_module_paths = patched_get_module_paths
 
 st.set_page_config(
     page_title="RAG System",
@@ -42,11 +65,15 @@ st.markdown("""
 @st.cache_resource
 def get_rag_service():
     """Initialize and return the RAG service"""
-    rag_service = RAGService(
-        chunk_size=DEFAULT_CHUNK_SIZE, 
-        chunk_overlap=DEFAULT_CHUNK_OVERLAP
-    )
-    return rag_service
+    try:
+        rag_service = RAGService(
+            chunk_size=DEFAULT_CHUNK_SIZE, 
+            chunk_overlap=DEFAULT_CHUNK_OVERLAP
+        )
+        return rag_service
+    except Exception as e:
+        st.error(f"Error initializing RAG service: {e}")
+        return None
 
 def get_file_info(file_path):
     """Get file information"""
@@ -72,7 +99,7 @@ def main():
     if "selected_pdf" not in st.session_state:
         st.session_state.selected_pdf = None
     
-    tab1, tab2, tab3 = st.tabs(["🔍 Query Documents", "📄 Manage Documents", "⚙️ Settings"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🔍 Query Documents", "📄 Manage Documents", "⚙️ Settings", "📐 Layout Analysis"])
     
     st.sidebar.header("System Info")
     
@@ -233,6 +260,57 @@ def main():
                 else:
                     st.error("Failed to rebuild index with new settings.")
     
+    with tab4:
+        st.header("Document Layout Analysis")
+        
+        rag_service = get_rag_service()
+        
+        if rag_service is None:
+            st.error("Error initializing RAG service. Please check logs.")
+        else:
+            st.write("This tool analyzes the layout of your PDF documents using YOLO object detection.")
+            
+            if st.button("Run Layout Analysis"):
+                with st.spinner("Analyzing document layouts..."):
+                    try:
+                        success = rag_service.analyze_layouts()
+                        if success:
+                            st.success("Layout analysis completed successfully!")
+                            
+                            # Display the layout outputs
+                            base_output_dir = rag_service.layout_analyzer.base_output_dir
+                            if base_output_dir.exists():
+                                st.subheader("Layout Analysis Results")
+                                
+                                for pdf in pdf_files:
+                                    pdf_name = Path(pdf).stem
+                                    output_path = base_output_dir / pdf_name
+                                    
+                                    if output_path.exists() and any(output_path.iterdir()):
+                                        with st.expander(f"Results for {pdf}"):
+                                            # Display all images in the output directory
+                                            image_files = list(output_path.glob("*.png"))
+                                            if image_files:
+                                                for img_file in image_files:
+                                                    try:
+                                                        st.image(str(img_file), caption=img_file.name)
+                                                    except Exception as img_err:
+                                                        st.warning(f"Could not display image {img_file.name}: {img_err}")
+                                            else:
+                                                st.info(f"No image files found for {pdf}")
+                        else:
+                            st.error("Layout analysis failed. Please check the console for details.")
+                    except Exception as e:
+                        st.error(f"Error running layout analysis: {e}")
+            
+            st.info("""
+            The layout analysis tool:
+            1. Processes each PDF document
+            2. Detects different components (text, images, tables, etc.)
+            3. Creates visual representations of the layout
+            4. Saves the results in the layout_outputs directory
+            """)
+
     st.divider()
     with st.expander("ℹ️ About this System"):
         st.write("""
