@@ -42,35 +42,62 @@ class PDFLoader:
         if not pdf_layout_dir.exists():
             return layout_info
             
-        # Process each page's layout information
         for page_file in pdf_layout_dir.glob("page_*.jpg"):
             try:
                 page_num = int(page_file.stem.split("_")[1])
                 layout_info[page_num] = []
                 
-                # Check for different element types and count them
-                element_types = ["text", "title", "list", "table", "figure", "image", "formula", "footnote"]
+                element_types = {
+                    "table": "Table",
+                    "figure": "Figure",
+                    "title": "Title",
+                    "plain text": "Text Block"
+                }
                 
-                for element_type in element_types:
+
+                for element_type, element_name in element_types.items():
                     element_dir = pdf_layout_dir / element_type
-                    if element_dir.exists():
-                        # Count elements of this type on this page
-                        elements = list(element_dir.glob(f"page{page_num}_det*.jpg"))
-                        count = len(elements)
+                    if not element_dir.exists():
+                        continue
                         
-                        if count > 0:
-                            # Add descriptive text for this element type
-                            if element_type == "table":
-                                for i, _ in enumerate(elements):
-                                    layout_info[page_num].append(f"[Table {i+1} on page {page_num+1}. The content of this table may contain important information related to the document.]")
+                    elements = sorted(
+                        element_dir.glob(f"page{page_num}_det*.jpg"),
+                        key=lambda x: int(x.stem.split("_")[-1])
+                    )
+                    
+                    if not elements:
+                        continue
+                        
+                    for i, _ in enumerate(elements):
+                        description = f"[{element_name} {i+1 if element_type != 'title' else ''} on page {page_num+1}"
+                        
+                        if element_type == "table":
+                            has_caption = bool(list(pdf_layout_dir.glob(f"table_caption/page{page_num}_det*.jpg")))
+                            has_footnotes = bool(list(pdf_layout_dir.glob(f"table_footnote/page{page_num}_det*.jpg")))
                             
-                            elif element_type in ["figure", "image"]:
-                                for i, _ in enumerate(elements):
-                                    layout_info[page_num].append(f"[{element_type.capitalize()} {i+1} on page {page_num+1}. This visual element may contain important information or illustrations related to the document content.]")
+                            if has_caption:
+                                description += " with caption"
+                            if has_footnotes:
+                                description += " with footnotes"
+                                
+                            description += ". This table may contain important data or information related to the document.]"
                             
-                            elif element_type == "formula":
-                                for i, _ in enumerate(elements):
-                                    layout_info[page_num].append(f"[Mathematical formula {i+1} appears on page {page_num+1}.]")
+                        elif element_type == "figure":
+                            has_caption = bool(list(pdf_layout_dir.glob(f"figure_caption/page{page_num}_det*.jpg")))
+                            if has_caption:
+                                description += " with caption"
+                            description += ". This visual element may contain important information or illustrations related to the document content.]"
+                            
+                        elif element_type == "title":
+                            description += ". This may be a section or subsection heading.]"
+                            
+                        elif element_type == "plain text":
+                            description += ". This may contain important content.]"
+                            
+                        layout_info[page_num].append(description)
+                
+                layout_info[page_num].sort()
+                
             except Exception as e:
                 print(f"Error processing layout for page {page_file}: {e}")
                 continue
