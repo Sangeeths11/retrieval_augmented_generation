@@ -9,6 +9,7 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 STORAGE_DIR = os.path.join(BASE_DIR, "storage")
+LAYOUT_DIR = os.path.join(STORAGE_DIR, "layout_outputs")
 PDF_DIR = os.path.join(BASE_DIR, "pdfs")
 
 DEFAULT_CHUNK_SIZE = 512

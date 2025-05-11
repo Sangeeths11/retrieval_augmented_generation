@@ -8,25 +8,28 @@ The application follows a clean, modular architecture:
 
 ```
 .
-├── app/                    # Main application package
-│   ├── core/               # Core configuration and services
-│   │   ├── config.py       # Application configuration
-│   │   └── service.py      # Main RAG service
-│   ├── document_processing/# Document processing modules
-│   │   ├── pdf_loader.py   # PDF loading functionality 
-│   │   └── chunker.py      # Document chunking functionality
-│   ├── indexing/           # Indexing modules
-│   │   └── index_manager.py# Index creation and management
-│   └── query_engine/       # Query processing modules
-│       └── query_processor.py # Query processing
-├── utils/                  # Utility functions
-│   └── text_utils.py       # Text processing utilities
-├── pdfs/                   # Directory for PDF files
-├── storage/                # Directory for index storage
-├── .env                    # Environment variables
-├── app.py                  # Main command-line application
-├── streamlit_app.py        # Streamlit web interface
-└── requirements.txt        # Project dependencies
+├── app/                         # Main application package
+│   ├── core/                    # Core configuration and services
+│   │   ├── config.py            # Application configuration
+│   │   └── service.py           # Main RAG service
+│   ├── document_processing/     # Document processing modules
+│   │   ├── pdf_loader.py        # PDF loading functionality 
+│   │   ├── layout_analysis.py   # PDF layout analyzer
+│   │   └── chunker.py           # Document chunking functionality
+│   ├── indexing/                # Indexing modules
+│   │   └── index_manager.py     # Index creation and management
+│   └── query_engine/            # Query processing modules
+│       └── query_processor.py   # Query processing
+├── utils/                       # Utility functions
+│   └── text_utils.py            # Text processing utilities
+├── pdfs/                        # Directory for PDF files
+├── storage/                     # Directory for index and layout storage
+│   └── layout_documents/        # Folder for layout documents per analyzed PDF
+├── .env                         # Environment variables
+├── app.py                       # Main command-line application
+├── streamlit_app.py             # Streamlit web interface
+├── run_streamlit.py             # Run Streamlit with pytorch dependencies
+└── requirements.txt             # Project dependencies
 ```
 
 ## Setup

@@ -129,6 +129,12 @@ def main():
                 success = rag_service.build_index()
                 if success:
                     st.sidebar.success("Index created successfully!")
+
+                    layout_success = rag_service.analyze_layouts()
+                    if layout_success:
+                        st.sidebar.success("Layout analysis completed successfully!")
+                    else:
+                        st.sidebar.error("Layout analysis ran, but not all documents may have been processed.")
                     time.sleep(2)
                     st.rerun()
                 else:
