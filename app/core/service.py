@@ -50,6 +50,13 @@ class RAGService:
             True if index was built successfully, False otherwise
         """
         try:
+            # First run layout analysis
+            print("[INFO] Running layout analysis before indexing...")
+            layout_success = self.analyze_layouts()
+            if not layout_success:
+                print("[WARN] Layout analysis had some issues, but proceeding with indexing.")
+            
+            # Then load documents (which will now include layout information)
             documents = self.pdf_loader.load_all_pdfs()
             if not documents:
                 print("No documents loaded.")

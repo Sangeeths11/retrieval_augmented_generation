@@ -1,7 +1,3 @@
-#!/usr/bin/env python3
-"""
-Launch script for Streamlit app with PyTorch compatibility fixes
-"""
 import os
 import sys
 import subprocess

@@ -1,10 +1,10 @@
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict
 from llama_index.core import Document
 from llama_index.readers.file import PyMuPDFReader
 
-from app.core.config import PDF_DIR
+from app.core.config import PDF_DIR, STORAGE_DIR
 from utils.text_utils import clean_text, extract_metadata
 
 class PDFLoader:
@@ -19,12 +19,64 @@ class PDFLoader:
         """
         self.pdf_dir = pdf_dir
         self.reader = PyMuPDFReader()
+        self.layout_dir = Path(STORAGE_DIR) / "layout_outputs"
     
     def get_pdf_files(self) -> List[Path]:
         """Get all PDF files in the directory"""
         pdf_dir_path = Path(self.pdf_dir)
         return list(pdf_dir_path.glob("*.pdf"))
     
+    def _get_layout_info(self, pdf_name: str) -> Dict[str, List[str]]:
+        """
+        Get layout analysis information for a PDF.
+        
+        Args:
+            pdf_name: Name of the PDF file (without extension)
+            
+        Returns:
+            Dictionary mapping page numbers to lists of descriptive text
+        """
+        layout_info = {}
+        pdf_layout_dir = self.layout_dir / pdf_name
+        
+        if not pdf_layout_dir.exists():
+            return layout_info
+            
+        # Process each page's layout information
+        for page_file in pdf_layout_dir.glob("page_*.jpg"):
+            try:
+                page_num = int(page_file.stem.split("_")[1])
+                layout_info[page_num] = []
+                
+                # Check for different element types and count them
+                element_types = ["text", "title", "list", "table", "figure", "image", "formula", "footnote"]
+                
+                for element_type in element_types:
+                    element_dir = pdf_layout_dir / element_type
+                    if element_dir.exists():
+                        # Count elements of this type on this page
+                        elements = list(element_dir.glob(f"page{page_num}_det*.jpg"))
+                        count = len(elements)
+                        
+                        if count > 0:
+                            # Add descriptive text for this element type
+                            if element_type == "table":
+                                for i, _ in enumerate(elements):
+                                    layout_info[page_num].append(f"[Table {i+1} on page {page_num+1}. The content of this table may contain important information related to the document.]")
+                            
+                            elif element_type in ["figure", "image"]:
+                                for i, _ in enumerate(elements):
+                                    layout_info[page_num].append(f"[{element_type.capitalize()} {i+1} on page {page_num+1}. This visual element may contain important information or illustrations related to the document content.]")
+                            
+                            elif element_type == "formula":
+                                for i, _ in enumerate(elements):
+                                    layout_info[page_num].append(f"[Mathematical formula {i+1} appears on page {page_num+1}.]")
+            except Exception as e:
+                print(f"Error processing layout for page {page_file}: {e}")
+                continue
+        
+        return layout_info
+
     def load_single_pdf(self, pdf_path: Path) -> Optional[Document]:
         """
         Load a single PDF file and convert it to a Document.
@@ -39,8 +91,22 @@ class PDFLoader:
             # Load the PDF
             docs = self.reader.load(file_path=pdf_path)
             
+            # Get layout information
+            pdf_name = pdf_path.stem
+            layout_info = self._get_layout_info(pdf_name)
+            
             # Create a single Document with the text from all pages
-            doc_text = "\n\n".join([d.get_content() for d in docs])
+            doc_pages = []
+            for i, doc in enumerate(docs):
+                page_text = doc.get_content()
+                
+                # Add layout information for this page
+                if i in layout_info and layout_info[i]:
+                    page_text += "\n\n" + "\n".join(layout_info[i])
+                
+                doc_pages.append(page_text)
+            
+            doc_text = "\n\n".join(doc_pages)
             
             # Clean the text
             cleaned_text = clean_text(doc_text)
@@ -53,7 +119,8 @@ class PDFLoader:
                 "source": pdf_path.name,
                 "file_path": str(pdf_path),
                 "file_size": os.path.getsize(pdf_path),
-                "file_type": "pdf"
+                "file_type": "pdf",
+                "has_layout_analysis": bool(layout_info)
             })
             
             document = Document(text=cleaned_text, metadata=metadata)

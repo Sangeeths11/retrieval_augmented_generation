@@ -1,31 +1,21 @@
 import os
-import sys
-
-# Fix for PyTorch and Streamlit compatibility issues
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-
-# Critical fix: disable Streamlit's file watcher for torch modules
-os.environ["STREAMLIT_WATCHDOG_IGNORE_TORCH"] = "True"
-
-# Import streamlit after setting environment variables
 import streamlit as st
-
-# Import everything else after streamlit
 from app.core.service import RAGService
 from app.core.config import DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP, PDF_DIR
 from datetime import datetime
 import time
 import base64
 from pathlib import Path
-
-# Monkey patch Streamlit's file watcher to ignore torch modules
 import streamlit.watcher.local_sources_watcher
 original_get_module_paths = streamlit.watcher.local_sources_watcher.get_module_paths
 
 def patched_get_module_paths(module):
-    if module.__name__.startswith('torch'):
+    try:
+        if hasattr(module, '__name__') and module.__name__.startswith('torch'):
+            return []
+        return original_get_module_paths(module)
+    except (AttributeError, TypeError):
         return []
-    return original_get_module_paths(module)
 
 streamlit.watcher.local_sources_watcher.get_module_paths = patched_get_module_paths
 
@@ -129,12 +119,6 @@ def main():
                 success = rag_service.build_index()
                 if success:
                     st.sidebar.success("Index created successfully!")
-
-                    layout_success = rag_service.analyze_layouts()
-                    if layout_success:
-                        st.sidebar.success("Layout analysis completed successfully!")
-                    else:
-                        st.sidebar.error("Layout analysis ran, but not all documents may have been processed.")
                     time.sleep(2)
                     st.rerun()
                 else:
@@ -315,6 +299,9 @@ def main():
             2. Detects different components (text, images, tables, etc.)
             3. Creates visual representations of the layout
             4. Saves the results in the layout_outputs directory
+            
+            Note: Layout analysis is automatically run during index building to include 
+            information about images and tables in the search index.
             """)
 
     st.divider()
